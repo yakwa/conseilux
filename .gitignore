@@ -1,0 +1,73 @@
+# Fichiers Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environnement virtuel
+venv/
+ENV/
+env/
+
+# Variables d'environnement (IMPORTANT - contient des secrets)
+.env
+.env.local
+.env.*.local
+
+# Base de données locale
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Fichiers temporaires
+*.tmp
+*.bak
+*.backup
+*.old
+
+# Cache Flask
+flask_session/
+instance/
+
+# Fichiers de test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node modules (si vous utilisez npm)
+node_modules/

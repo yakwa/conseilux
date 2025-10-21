@@ -1,0 +1,21 @@
+{
+    "name": "Conseilux Training & Developpement",
+    "short_name": "Conseilux",
+    "description": "La formation sur mesure, humaine et digitale",
+    "icons": [
+        {
+            "src": "/static/conseilux.jpg",
+            "sizes": "192x192",
+            "type": "image/jpeg"
+        },
+        {
+            "src": "/static/conseilux.jpg",
+            "sizes": "512x512",
+            "type": "image/jpeg"
+        }
+    ],
+    "theme_color": "#4169e1",
+    "background_color": "#ffffff",
+    "display": "standalone",
+    "start_url": "/"
+}

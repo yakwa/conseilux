@@ -65,8 +65,8 @@
 }
 
 .megamenu-container {
-    max-width: 1200px;
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 0;
     display: flex;
     flex-wrap: wrap; /* allow columns to wrap on one or two rows if needed */
     gap: 10px;
@@ -325,6 +325,7 @@ html, body {
 .home-hero {
     /* Eviter le double espacement : le body a déjà padding-top = var(--header-offset) */
     padding: 0px 0 40px !important;
+    margin-top: 12px !important; /* espace entre la nav et l'entête */
     background: #f7f8fb;
 }
 .home-hero .grid {
@@ -427,11 +428,8 @@ html, body {
     content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
     position: absolute; left: 0; color: var(--accent-color); font-size: 0.82rem; top: 2px;
 }
-.cards-grid .course-card:nth-child(5n+1) .inner { background:#2c3fdc; }
-.cards-grid .course-card:nth-child(5n+2) .inner { background:#2b36bf; }
-.cards-grid .course-card:nth-child(5n+3) .inner { background:#2a33ad; }
-.cards-grid .course-card:nth-child(5n+4) .inner { background:#2434a1; }
-.cards-grid .course-card:nth-child(5n+5) .inner { background:#233091; }
+/* Uniformiser le bleu des cartes "Nos solutions" */
+.cards-grid .course-card .inner { background: var(--brand-dark) !important; }
 
 :root {
     --primary-color: #4169e1; /* Royal Blue */
@@ -472,8 +470,8 @@ section:first-of-type,
 
 .container {
     width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 0;
     padding: 0 20px;
 }
 
@@ -569,7 +567,7 @@ ul {
     width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
     background: rgba(255,255,255,0.12); color: var(--white); border-radius: 50%;
 }
-.topbar .social:hover { background: rgba(255,255,255,0.24); transform: translateY(-2px); }
+.topbar .social:hover { background: var(--accent-color); color: #fff; transform: translateY(-2px); }
 .topbar-search { display: flex; gap: 10px; align-items: center; }
 .topbar-search .search-field { position: relative; flex: 1; }
 .topbar-search .search-field i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #9aa0a6; font-size: 0.95rem; }
@@ -2064,7 +2062,7 @@ img.lazy.loaded {
 /* Styles pour les très grands écrans */
 @media (min-width: 1400px) {
     .container {
-        max-width: 1320px;
+        max-width: 100%;
     }
     
     .hero h1 {
@@ -2085,7 +2083,7 @@ img.lazy.loaded {
 /* Styles pour les écrans ultra-larges */
 @media (min-width: 1600px) {
     .container {
-        max-width: 1500px;
+        max-width: 100%;
     }
     
     .services-grid {

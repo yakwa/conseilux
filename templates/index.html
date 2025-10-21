@@ -1,6 +1,23 @@
 {% extends 'base.html' %}
 
-{% block title %}Accueil - Conseilux{% endblock %}
+{% block title %}Accueil - Conseilux Training & Developpement{% endblock %}
+
+{% block body_end %}
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    try{
+      if (window.Swiper) {
+        new Swiper('.upcoming-swiper', {
+          slidesPerView: 1,
+          loop: true,
+          autoplay: { delay: 2000, disableOnInteraction: false },
+          pagination: { el: '.upcoming-swiper .swiper-pagination', clickable: true },
+        });
+      }
+    } catch(e) { console.warn('Swiper init error', e); }
+  });
+</script>
+{% endblock %}
 
 {% block content %}
     <!-- Accueil: Intro principale -->
@@ -8,22 +25,43 @@
         <div class="container">
             <div class="grid">
                 <div>
-                    <p class="kicker">La transformation de votre entreprise commence par la formation de vos talents !</p>
-                    <h1>Conseilux<br>La formation sur mesure, humaine et digitale</h1>
-                    <a href="{{ url_for('formations') }}" class="cta-primary">Trouver votre formation <i class="fas fa-arrow-right"></i></a>
+                    <p class="kicker">&nbsp;</p>
+                    <h1 style="line-height:1.2; font-size:3rem; margin: 0 0 14px;">
+                        <span style="color:#2740d1;">Conseilux Training and Development</span>
+                        <small style="display:block; color:#ff6600; font-style:italic; font-size:1rem; margin-top:8px; opacity:0.95;">
+                            Préparer les talents d’aujourd’hui aux défis de demain tout mettant l'humain au cœur de nos solutions
+                        </small>
+                    </h1>
+                    <a href="{{ url_for('formations') }}" class="cta-primary" style="margin-top:4px;">Trouver votre formation <i class="fas fa-arrow-right"></i></a>
                 </div>
                 <div class="side">
-                    <p>Accélérez votre transformation digitale et développez les compétences de demain</p>
+                    <!-- Formations en cours (slider) -->
+                    <div class="upcoming-swiper swiper" aria-label="Formations en cours">
+                        <div class="swiper-wrapper">
+                            {% for it in upcoming_trainings %}
+                            <div class="swiper-slide">
+                                <article class="up-item">
+                                    <div class="up-date">
+                                        <div class="up-month">{{ it.month }}</div>
+                                        <div class="up-day">{{ it.day }}</div>
+                                        <div class="up-status">{{ it.status }}</div>
+                                    </div>
+                                    <div class="up-body">
+                                        <h4 class="up-title">{{ it.title }}</h4>
+                                        <div class="up-loc"><i class="fas fa-map-marker-alt"></i> {{ it.location }}</div>
+                                    </div>
+                                </article>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="swiper-pagination"></div>
+                    </div>
+                    
                     <div class="badge-rating">
                         <strong>4.9/5</strong>
                         <span>Google Avis Clients</span>
                     </div>
-                    <!-- Bande de certifications (toutes les images dans static/certifications/) -->
-                    <div class="cert-logos" aria-label="Certifications">
-                        {% for img in certifications_images %}
-                            <img src="{{ url_for('static', filename='logos/' ~ img) }}" alt="{{ img.rsplit('.', 1)[0] }}" loading="lazy">
-                        {% endfor %}
-                    </div>
+                    
                 </div>
             </div>
         </div>
@@ -82,21 +120,21 @@
     </section>
 
     
-    <!-- Bande logos partenaires (affiche toutes les images dans static/partenaires/) -->
-    <section class="partners">
-        <div class="container">
-            <div class="partners-logos real-logos" aria-label="Partenaires & Accréditations">
-                {% for img in partners_images %}
-                    <div>
-                        <img src="{{ url_for('static', filename='images/' ~ (img | safe_url_encode)) }}" 
-                             alt="{{ img.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title() }}"
-                             loading="lazy"
-                             onerror="this.style.display='none';">
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
+    <style>
+      /* Formations en cours – styles compacts */
+      .upcoming-swiper { width: 100%; max-width: 520px; background:#fff; border:1px solid #edf0f5; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,.06); }
+      .up-item { display:flex; align-items:center; gap:16px; padding:14px; }
+      .up-date { width:84px; min-width:84px; background:#ff6600; color:#fff; border-radius:8px; text-align:center; padding:10px 8px; display:flex; flex-direction:column; justify-content:center; }
+      .up-month { font-weight:700; letter-spacing:.5px; }
+      .up-day { font-size:28px; line-height:1; font-weight:800; margin:4px 0; }
+      .up-status { font-size:.85rem; opacity:.95; }
+      .up-body { flex:1; }
+      .up-title { margin:0 0 6px; font-size:1.05rem; color:#0f1e5a; }
+      .up-loc { color:#2740d1; font-weight:700; display:flex; align-items:center; gap:8px; }
+      .up-loc i { color:#2740d1; }
+      .upcoming-swiper .swiper-pagination-bullet { background:#c7d2fe; }
+      .upcoming-swiper .swiper-pagination-bullet-active { background:#2740d1; }
+    </style>
 
     <!-- Nos formations (cartes catégories) -->
     <section class="courses">
@@ -515,52 +553,6 @@
         </div>
     </section>
 
-    <style>
-        /* Logos de certifications dans le hero */
-        .cert-logos{
-            display:flex;
-            flex-wrap:wrap;
-            gap:10px;
-            align-items:center;
-            margin-top:14px;
-        }
-        .cert-logos img{
-            height:28px;
-            object-fit:contain;
-            filter:none;
-            opacity:.95;
-        }
-
-        /* Bande partenaires: vrais logos */
-        .partners .real-logos{
-            display:grid;
-            grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
-            gap:20px;
-            align-items:center;
-        }
-        .partners .real-logos img{
-            max-width:100%;
-            height:32px;
-            object-fit:contain;
-            filter:none;
-            opacity:.95;
-        }
-        .partners .real-logos a{
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:10px 12px;
-            background:#fff;
-            border:1px solid #eee;
-            border-radius:8px;
-            transition: box-shadow .2s ease;
-        }
-        .partners .real-logos a:hover{ box-shadow:0 6px 18px rgba(0,0,0,.06); }
-
-        @media (max-width:768px){
-            .cert-logos img{ height:22px; }
-            .partners .real-logos img{ height:26px; }
-        }
-    </style>
+    
 
 {% endblock %}

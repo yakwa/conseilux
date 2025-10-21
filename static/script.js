@@ -240,4 +240,54 @@ document.addEventListener('DOMContentLoaded', function() {
     //     subtree: true
     // });
 
+    // ========== LAZY LOADING DES IMAGES ==========
+    // Améliore les performances en chargeant les images uniquement quand elles sont visibles
+    function initLazyLoading() {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    
+                    // Charger l'image
+                    if (img.dataset.src) {
+                        img.src = img.dataset.src;
+                        img.removeAttribute('data-src');
+                    }
+                    
+                    // Charger le background-image
+                    if (img.dataset.bg) {
+                        img.style.backgroundImage = `url('${img.dataset.bg}')`;
+                        img.removeAttribute('data-bg');
+                    }
+                    
+                    // Ajouter une classe pour les animations
+                    img.classList.add('loaded');
+                    
+                    // Arrêter d'observer cette image
+                    observer.unobserve(img);
+                }
+            });
+        }, {
+            rootMargin: '50px' // Charger 50px avant que l'image soit visible
+        });
+
+        // Observer toutes les images avec data-src ou data-bg
+        document.querySelectorAll('img[data-src], [data-bg]').forEach(img => {
+            imageObserver.observe(img);
+        });
+    }
+
+    // Initialiser le lazy loading si le navigateur supporte IntersectionObserver
+    if ('IntersectionObserver' in window) {
+        initLazyLoading();
+    } else {
+        // Fallback pour les anciens navigateurs : charger toutes les images immédiatement
+        document.querySelectorAll('img[data-src]').forEach(img => {
+            img.src = img.dataset.src;
+        });
+        document.querySelectorAll('[data-bg]').forEach(el => {
+            el.style.backgroundImage = `url('${el.dataset.bg}')`;
+        });
+    }
+
 }); // Fin de DOMContentLoaded

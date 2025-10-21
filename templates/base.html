@@ -3,16 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Conseilux - Formation et Développement Professionnel{% endblock %}</title>
-    <meta name="description" content="Conseilux - La formation sur mesure, humaine et digitale. Développez vos compétences avec nos formations professionnelles et accompagnements personnalisés.">
+    <title>{% block title %}Conseilux Training & Developpement - Formation et Développement Professionnel{% endblock %}</title>
+    <meta name="description" content="Conseilux Training & Developpement - La formation sur mesure, humaine et digitale. Développez vos compétences avec nos formations professionnelles et accompagnements personnalisés.">
     <link rel="canonical" href="{{ request.url }}">
     <!-- OpenGraph -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Conseilux - Formation et Développement Professionnel">
+    <meta property="og:title" content="Conseilux Training & Developpement - Formation et Développement Professionnel">
     <meta property="og:description" content="La formation sur mesure, humaine et digitale pour développer vos compétences et celles de vos équipes.">
     <meta property="og:url" content="{{ request.url }}">
     <meta property="og:image" content="{{ url_for('static', filename='conseilux.jpg') }}">
-    <meta property="og:site_name" content="Conseilux">
+    <meta property="og:site_name" content="Conseilux Training & Developpement">
+    
+    <!-- Favicon et icônes -->
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='conseilux.jpg') }}">
+    <link rel="shortcut icon" type="image/jpeg" href="{{ url_for('static', filename='conseilux.jpg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='conseilux.jpg') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='conseilux.jpg') }}">
+    <link rel="icon" type="image/jpeg" sizes="32x32" href="{{ url_for('static', filename='conseilux.jpg') }}">
+    <link rel="icon" type="image/jpeg" sizes="16x16" href="{{ url_for('static', filename='conseilux.jpg') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+    <meta name="theme-color" content="#4169e1">
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -139,25 +150,7 @@
                 </div>
             </div>
             <!-- Bande certifications globale défilante -->
-            <div class="cert-marquee" aria-label="Certifications" style="overflow:hidden; padding:8px 0;">
-                <div class="cert-track" style="display:flex; gap:12px; align-items:center; will-change:transform; animation: cert-scroll 30s linear infinite;">
-                    {% for img in certifications_images %}
-                        <img src="{{ url_for('static', filename='logos/' ~ (img | safe_url_encode)) }}" 
-                             alt="{{ img.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title() }}" 
-                             style="height:22px; object-fit:contain; opacity:.95;"
-                             loading="lazy"
-                             onerror="this.style.display='none';">
-                    {% endfor %}
-                    {# duplication pour défilement infini #}
-                    {% for img in certifications_images %}
-                        <img src="{{ url_for('static', filename='logos/' ~ (img | safe_url_encode)) }}" 
-                             alt="" aria-hidden="true" 
-                             style="height:22px; object-fit:contain; opacity:.95;"
-                             loading="lazy"
-                             onerror="this.style.display='none';">
-                    {% endfor %}
-                </div>
-            </div>
+            
             <nav class="navbar" role="navigation" aria-label="Menu principal">
                 <a href="{{ url_for('home') }}" class="logo" aria-label="Accueil">
                     <img src="{{ url_for('static', filename='conseilux.jpg') }}" alt="Conseilux Logo">
@@ -261,7 +254,7 @@
                     <li class="nav-item"><a href="{{ url_for('modalites') }}" class="nav-link {{ 'active' if request.path == url_for('modalites') }}">Modalités</a></li>
                     <li class="nav-item"><a href="{{ url_for('evenements') }}" class="nav-link {{ 'active' if request.path == url_for('evenements') }}">Événements</a></li>
                     <li class="nav-item"><a href="{{ url_for('apropos') }}" class="nav-link {{ 'active' if request.path == url_for('apropos') }}">Qui sommes-nous ?</a></li>
-                    <li class="nav-item"><a href="{{ url_for('contact') }}" class="btn btn-primary btn-pill">Contact</a></li>
+                    <li class="nav-item"><a href="{{ url_for('contact') }}" class="btn btn-dark btn-pill">Contact</a></li>
                 </ul>
             </nav>
         </div>

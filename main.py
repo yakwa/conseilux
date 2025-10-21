@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import smtplib
 import glob
@@ -10,6 +10,11 @@ from email.mime.multipart import MIMEMultipart
 import re
 from urllib.parse import quote
 from functools import wraps
+from dotenv import load_dotenv
+from supabase import create_client, Client
+
+# Charger les variables d'environnement
+load_dotenv()
 
 # Crée l'application Flask
 app = Flask(__name__)
@@ -37,11 +42,67 @@ app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True').lower() == '
 app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'False').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'contact@conseilux-training.com')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'contact@conseiluxtraining.com')
 
 # Initialiser Flask-Mail et SQLAlchemy
 mail = Mail(app)
 db = SQLAlchemy(app)
+
+# Initialiser Supabase
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+supabase: Client = None
+
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("✓ Supabase connecté avec succès")
+    except Exception as e:
+        print(f"⚠ Erreur de connexion à Supabase: {e}")
+else:
+    print("⚠ Variables Supabase non configurées - les avis utiliseront SQLite")
+
+# ========== SYSTÈME DE CACHE SIMPLE ==========
+# Cache en mémoire pour réduire les appels à Supabase
+class SimpleCache:
+    def __init__(self):
+        self.cache = {}
+        self.timestamps = {}
+    
+    def get(self, key, max_age_seconds=300):
+        """Récupère une valeur du cache si elle n'est pas expirée"""
+        if key not in self.cache:
+            return None
+        
+        # Vérifier si le cache est expiré
+        if key in self.timestamps:
+            age = (datetime.utcnow() - self.timestamps[key]).total_seconds()
+            if age > max_age_seconds:
+                # Cache expiré, le supprimer
+                del self.cache[key]
+                del self.timestamps[key]
+                return None
+        
+        return self.cache[key]
+    
+    def set(self, key, value):
+        """Stocke une valeur dans le cache"""
+        self.cache[key] = value
+        self.timestamps[key] = datetime.utcnow()
+    
+    def clear(self, key=None):
+        """Vide le cache (tout ou une clé spécifique)"""
+        if key:
+            if key in self.cache:
+                del self.cache[key]
+            if key in self.timestamps:
+                del self.timestamps[key]
+        else:
+            self.cache.clear()
+            self.timestamps.clear()
+
+# Initialiser le cache global
+app_cache = SimpleCache()
 
 # Ajouter un filtre pour encoder les URLs
 @app.template_filter('urlencode')
@@ -75,6 +136,123 @@ class AvisClient(db.Model):
     
     def __repr__(self):
         return f'<AvisClient {self.nom_complet}>'
+
+# ========== Fonctions Supabase pour la newsletter ==========
+
+def add_newsletter_subscriber_supabase(email):
+    """Ajoute un abonné à la newsletter dans Supabase"""
+    if not supabase:
+        return False, "Supabase non configuré"
+    
+    try:
+        # Vérifier si l'email existe déjà
+        existing = supabase.table('abonne_newsletter').select('email').eq('email', email).execute()
+        
+        if existing.data and len(existing.data) > 0:
+            return False, "Cet email est déjà inscrit à la newsletter"
+        
+        # Ajouter le nouvel abonné
+        data = {
+            'email': email,
+            'date_inscription': datetime.utcnow().isoformat()
+        }
+        response = supabase.table('abonne_newsletter').insert(data).execute()
+        return True, "Inscription réussie"
+    except Exception as e:
+        print(f"Erreur lors de l'ajout d'abonné newsletter dans Supabase: {e}")
+        return False, str(e)
+
+def get_all_newsletter_subscribers_supabase():
+    """Récupère tous les abonnés à la newsletter depuis Supabase"""
+    if not supabase:
+        return []
+    
+    try:
+        response = supabase.table('abonne_newsletter').select('*').order('date_inscription', desc=True).execute()
+        return response.data
+    except Exception as e:
+        print(f"Erreur lors de la récupération des abonnés newsletter depuis Supabase: {e}")
+        return []
+
+def delete_newsletter_subscriber_supabase(email):
+    """Supprime un abonné de la newsletter dans Supabase"""
+    if not supabase:
+        return False, "Supabase non configuré"
+    
+    try:
+        response = supabase.table('abonne_newsletter').delete().eq('email', email).execute()
+        return True, "Abonné supprimé avec succès"
+    except Exception as e:
+        print(f"Erreur lors de la suppression d'abonné newsletter dans Supabase: {e}")
+        return False, str(e)
+
+# ========== Fonctions Supabase pour les avis clients ==========
+
+def get_avis_from_supabase(limit=12):
+    """Récupère les avis clients depuis Supabase avec cache"""
+    if not supabase:
+        return []
+    
+    # Vérifier le cache d'abord (5 minutes)
+    cache_key = f'avis_clients_{limit}'
+    cached_data = app_cache.get(cache_key, max_age_seconds=300)
+    if cached_data is not None:
+        return cached_data
+    
+    try:
+        response = supabase.table('avis_clients').select('*').eq('approuve', True).order('date_creation', desc=True).limit(limit).execute()
+        # Mettre en cache le résultat
+        app_cache.set(cache_key, response.data)
+        return response.data
+    except Exception as e:
+        print(f"Erreur lors de la récupération des avis depuis Supabase: {e}")
+        return []
+
+def create_avis_in_supabase(nom_complet, avis, note):
+    """Crée un nouvel avis client dans Supabase"""
+    if not supabase:
+        return False, "Supabase non configuré"
+    
+    try:
+        data = {
+            'nom_complet': nom_complet,
+            'avis': avis,
+            'note': note,
+            'date_creation': datetime.utcnow().isoformat(),
+            'approuve': True
+        }
+        response = supabase.table('avis_clients').insert(data).execute()
+        # Invalider le cache des avis
+        app_cache.clear('avis_clients_12')
+        return True, "Avis créé avec succès"
+    except Exception as e:
+        print(f"Erreur lors de la création de l'avis dans Supabase: {e}")
+        return False, str(e)
+
+def get_avis_clients(limit=12):
+    """Récupère les avis clients - utilise Supabase si disponible, sinon SQLite"""
+    if supabase:
+        # Utiliser Supabase
+        avis_data = get_avis_from_supabase(limit)
+        # Convertir les données Supabase en objets similaires à SQLAlchemy pour compatibilité template
+        class AvisObject:
+            def __init__(self, data):
+                self.id = data.get('id')
+                self.nom_complet = data.get('nom_complet')
+                self.avis = data.get('avis')
+                self.note = data.get('note')
+                # Convertir la date string en datetime
+                date_str = data.get('date_creation')
+                if isinstance(date_str, str):
+                    self.date_creation = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                else:
+                    self.date_creation = datetime.utcnow()
+                self.approuve = data.get('approuve', True)
+        
+        return [AvisObject(avis) for avis in avis_data]
+    else:
+        # Fallback sur SQLite
+        return AvisClient.query.filter_by(approuve=True).order_by(AvisClient.date_creation.desc()).limit(limit).all()
 
 # Fonction pour lister les images dans un dossier
 def get_images_from_folder(folder_name):
@@ -145,17 +323,44 @@ def home():
     """Affiche la page d'accueil."""
     # Fonction de création de SVG désactivée - utilisation des vraies images PNG uniquement
     
-    # Récupérer les avis clients approuvés pour affichage
-    avis_clients = AvisClient.query.filter_by(approuve=True).order_by(AvisClient.date_creation.desc()).limit(12).all()
+    # Récupérer les avis clients approuvés pour affichage (Supabase ou SQLite)
+    avis_clients = get_avis_clients(limit=12)
     
     # Récupérer les listes d'images
     partners_images = get_images_from_folder('images')
     certifications_images = get_images_from_folder('logos')
     
+    # Formations en cours (exemples)
+    def get_upcoming_trainings():
+        items = [
+            {"date": datetime(2025, 1, 19), "title": "PMP® : Project Management Professional", "location": "TOGO", "status": "Confirmée"},
+            {"date": datetime(2025, 2, 3), "title": "ITIL® 4 Foundation – Préparation", "location": "TOGO", "status": "Ouverte"},
+            {"date": datetime(2025, 2, 10), "title": "Scrum Master (PSM)", "location": "TOGO", "status": "Ouverte"},
+            {"date": datetime(2025, 3, 5), "title": "ISO 27001 – Introduction", "location": "TOGO", "status": "Ouverte"},
+            # Ajouts demandés
+            {"date": datetime(2025, 3, 12), "title": "Anglais professionnel & académique", "location": "TOGO", "status": "Ouverte"},
+            {"date": datetime(2025, 3, 19), "title": "Business English & spécialisé", "location": "TOGO", "status": "Ouverte"},
+            {"date": datetime(2025, 3, 26), "title": "Préparation TOEFL, TOEIC, TFI, IELTS, Cambridge", "location": "TOGO", "status": "Ouverte"},
+            {"date": datetime(2025, 4, 2), "title": "Relation client & éducation financière", "location": "TOGO", "status": "Ouverte"},
+            {"date": datetime(2025, 4, 9), "title": "Négociation & techniques de vente", "location": "TOGO", "status": "Ouverte"},
+            {"date": datetime(2025, 4, 16), "title": "Leadership commercial", "location": "TOGO", "status": "Ouverte"},
+            {"date": datetime(2025, 4, 23), "title": "Séminaires & Team Building", "location": "TOGO", "status": "Ouverte"},
+        ]
+        for it in items:
+            try:
+                it["month"] = it["date"].strftime('%b').upper()
+                it["day"] = it["date"].strftime('%d')
+            except Exception:
+                it["month"], it["day"] = "", ""
+        return items
+
+    upcoming_trainings = get_upcoming_trainings()
+
     return render_template('index.html', 
                          avis_clients=avis_clients,
                          partners_images=partners_images,
-                         certifications_images=certifications_images)
+                         certifications_images=certifications_images,
+                         upcoming_trainings=upcoming_trainings)
 
 @app.route('/mission')
 def mission():
@@ -389,28 +594,55 @@ def newsletter():
         return jsonify({"ok": False, "error": "Adresse email invalide"}), 400
     
     try:
-        # Vérifier si l'email existe déjà
-        abonne_existant = AbonneNewsletter.query.filter_by(email=email.lower().strip()).first()
+        email_clean = email.lower().strip()
         
-        if abonne_existant:
+        if supabase:
+            # Utiliser Supabase
+            success, message = add_newsletter_subscriber_supabase(email_clean)
+            
+            if success:
+                return jsonify({
+                    "ok": True, 
+                    "message": "Inscription réussie ! Merci de vous être abonné à notre newsletter."
+                })
+            else:
+                # Vérifier si c'est une erreur de doublon
+                if "déjà inscrit" in message:
+                    return jsonify({
+                        "ok": False, 
+                        "error": message,
+                        "already_subscribed": True
+                    }), 409
+                else:
+                    return jsonify({
+                        "ok": False, 
+                        "error": message
+                    }), 500
+        else:
+            # Fallback sur SQLite
+            # Vérifier si l'email existe déjà
+            abonne_existant = AbonneNewsletter.query.filter_by(email=email_clean).first()
+            
+            if abonne_existant:
+                return jsonify({
+                    "ok": False, 
+                    "error": "Cet email est déjà abonné à notre newsletter",
+                    "already_subscribed": True
+                }), 409
+            
+            # Créer un nouvel abonné
+            nouvel_abonne = AbonneNewsletter(email=email_clean)
+            db.session.add(nouvel_abonne)
+            db.session.commit()
+            
             return jsonify({
-                "ok": False, 
-                "error": "Cet email est déjà abonné à notre newsletter",
-                "already_subscribed": True
-            }), 409
-        
-        # Créer un nouvel abonné
-        nouvel_abonne = AbonneNewsletter(email=email.lower().strip())
-        db.session.add(nouvel_abonne)
-        db.session.commit()
-        
-        return jsonify({
-            "ok": True, 
-            "message": "Inscription réussie ! Merci de vous être abonné à notre newsletter."
-        })
+                "ok": True, 
+                "message": "Inscription réussie ! Merci de vous être abonné à notre newsletter."
+            })
         
     except Exception as e:
-        db.session.rollback()
+        if not supabase:
+            db.session.rollback()
         print(f"Erreur lors de l'inscription newsletter: {e}")
         return jsonify({
             "ok": False, 
@@ -454,12 +686,12 @@ def contact():
                     
                     msg = Message(
                         subject=f"[Contact Site] {subject}",
-                        recipients=[os.environ.get('CONTACT_EMAIL', 'contact@conseilux-training.com')],
+                        recipients=[os.environ.get('CONTACT_EMAIL', 'contact@conseiluxtraining.com')],
                         reply_to=form_data['email']
                     )
                     
                     # Corps du message
-                    msg.body = f"""Nouveau message reçu depuis le formulaire de contact du site Conseilux:
+                    msg.body = f"""Nouveau message reçu depuis le formulaire de contact du site Conseilux Training & Developpement:
 
 Nom: {form_data['name']}
 Email: {form_data['email']}
@@ -502,20 +734,34 @@ Ce message a été envoyé automatiquement depuis le site web."""
             # Si pas d'erreurs, enregistrer l'avis
             if len(avis_errors) == 0:
                 try:
-                    nouvel_avis = AvisClient(
-                        nom_complet=avis_data['nom_complet'],
-                        avis=avis_data['avis'],
-                        note=int(avis_data['note'])
-                    )
-                    db.session.add(nouvel_avis)
-                    db.session.commit()
-                    avis_success = True
+                    if supabase:
+                        # Utiliser Supabase
+                        success_flag, message = create_avis_in_supabase(
+                            avis_data['nom_complet'],
+                            avis_data['avis'],
+                            int(avis_data['note'])
+                        )
+                        avis_success = success_flag
+                        if not success_flag:
+                            avis_errors['general'] = f"Erreur Supabase: {message}"
+                    else:
+                        # Fallback sur SQLite
+                        nouvel_avis = AvisClient(
+                            nom_complet=avis_data['nom_complet'],
+                            avis=avis_data['avis'],
+                            note=int(avis_data['note'])
+                        )
+                        db.session.add(nouvel_avis)
+                        db.session.commit()
+                        avis_success = True
                     
                     # Réinitialiser le formulaire après envoi réussi
-                    avis_data = {"nom_complet": "", "avis": "", "note": "5"}
+                    if avis_success:
+                        avis_data = {"nom_complet": "", "avis": "", "note": "5"}
                     
                 except Exception as e:
-                    db.session.rollback()
+                    if not supabase:
+                        db.session.rollback()
                     avis_success = False
                     avis_errors['general'] = "Une erreur s'est produite lors de l'enregistrement de votre avis. Veuillez réessayer plus tard."
                     print(f"Erreur enregistrement avis: {e}")
@@ -642,7 +888,25 @@ def admin_logout():
 @admin_required
 def admin_newsletter():
     """Route d'administration pour voir les abonnés (accès protégé)"""
-    abonnes = AbonneNewsletter.query.order_by(AbonneNewsletter.date_inscription.desc()).all()
+    if supabase:
+        # Utiliser Supabase
+        abonnes_data = get_all_newsletter_subscribers_supabase()
+        # Convertir en objets pour compatibilité template
+        class AbonneObject:
+            def __init__(self, data):
+                self.id = data.get('id')
+                self.email = data.get('email')
+                date_str = data.get('date_inscription')
+                if isinstance(date_str, str):
+                    self.date_inscription = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                else:
+                    self.date_inscription = datetime.utcnow()
+        
+        abonnes = [AbonneObject(a) for a in abonnes_data]
+    else:
+        # Fallback sur SQLite
+        abonnes = AbonneNewsletter.query.order_by(AbonneNewsletter.date_inscription.desc()).all()
+    
     return render_template('admin_newsletter.html', abonnes=abonnes)
 
 @app.route('/mentions-legales')
