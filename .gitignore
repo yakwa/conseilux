@@ -71,3 +71,5 @@ htmlcov/
 
 # Node modules (si vous utilisez npm)
 node_modules/
+
+.vercel
