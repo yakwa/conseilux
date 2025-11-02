@@ -17,7 +17,11 @@
     },
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|webp))",
+      "dest": "/static/$1"
     },
     {
       "src": "/(.*)",
