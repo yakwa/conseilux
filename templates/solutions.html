@@ -1270,7 +1270,7 @@
                     {% set cert_name = img.rsplit('.', 1)[0] %}
                     <div class="certification-item">
                         <div class="cert-logo">
-                            <img src="{{ url_for('static', filename='logos/' ~ img) }}" alt="{{ cert_name }}" />
+                            <img src="{{ static_url('logos/' ~ img) }}" alt="{{ cert_name }}" />
                         </div>
                         <h4>{{ cert_name|title }}</h4>
                         <p>

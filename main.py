@@ -806,9 +806,20 @@ def inject_certifications_images():
         print(f"Erreur lors du chargement des partenaires: {e}")
         partners_images = []
 
+    # Fonction helper pour les chemins statiques compatible Vercel
+    def static_url(filename):
+        """Génère l'URL statique correcte pour Vercel et local"""
+        if os.environ.get('VERCEL'):
+            # Sur Vercel, utiliser le chemin absolu
+            return f'/static/{filename}'
+        else:
+            # En local, utiliser url_for
+            return url_for('static', filename=filename)
+    
     return {
         'certifications_images': certifications_images,
         'partners_images': partners_images,
+        'static_url': static_url,
     }
 
 # Filtre personnalisé pour l'encodage des URLs
