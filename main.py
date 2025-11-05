@@ -27,8 +27,9 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'AdminConseilux2024!')
 
 # Configuration de la base de données
 # Utiliser un chemin absolu pour la base de données en production
-if os.environ.get('VERCEL'):
-    # En production Vercel, utiliser une base de données temporaire
+if os.environ.get('VERCEL') or os.environ.get('RENDER'):
+    # En production (Vercel ou Render), utiliser une base de données temporaire
+    # Note: Pour une solution permanente, configurez une base de données PostgreSQL sur Render
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
 else:
     # En développement local
